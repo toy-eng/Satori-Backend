@@ -29,11 +29,16 @@ export const listSurveys = async (userId: string, query: ListSurveysQuery) => {
       skip: (page - 1) * limit,
       take: limit,
       include: {
-        _count: { select: { responses: true } },
+        _count: { select: { responses: true, sections: true } },
         responses: {
           select: {
             timeTakenSec: true,
             completedAt: true,
+          },
+        },
+        sections: {
+          select: {
+            _count: { select: { questions: true } },
           },
         },
       },
@@ -58,6 +63,11 @@ export const listSurveys = async (userId: string, query: ListSurveysQuery) => {
           ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
           : 0;
 
+      const questionCount = survey.sections.reduce(
+        (sum, section) => sum + section._count.questions,
+        0
+      );
+
       return {
         id: survey.id,
         title: survey.title,
@@ -65,6 +75,8 @@ export const listSurveys = async (userId: string, query: ListSurveysQuery) => {
         status: survey.status,
         category: survey.category,
         response_count: survey._count.responses,
+        section_count: survey._count.sections,
+        question_count: questionCount,
         avg_response_time: avgResponseTime,
         completion_rate: completionRate,
         created_at: survey.createdAt.toISOString(),
