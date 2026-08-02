@@ -27,7 +27,7 @@ export const listSurveyResponses = async (
       include: {
         answers: {
           include: {
-            question: { select: { text: true, type: true } },
+            question: { select: { text: true, type: true, required: true } },
           },
         },
       },
@@ -44,6 +44,8 @@ export const listSurveyResponses = async (
       answers: response.answers.map((answer) => ({
         question_id: answer.questionId,
         question_text: answer.question.text,
+        question_type: answer.question.type,
+        question_required: answer.question.required,
         answer_text: answer.answerText,
         likert_value: answer.likertValue,
         yes_no_value: answer.yesNoValue,
@@ -99,7 +101,7 @@ export const getResponseDetail = async (responseId: string, userId: string) => {
       survey: { select: { id: true, title: true } },
       answers: {
         include: {
-          question: { select: { text: true, type: true } },
+          question: { select: { text: true, type: true, required: true } },
         },
       },
     },
@@ -119,6 +121,8 @@ export const getResponseDetail = async (responseId: string, userId: string) => {
     answers: response.answers.map((answer) => ({
       question_id: answer.questionId,
       question_text: answer.question.text,
+      question_type: answer.question.type,
+      question_required: answer.question.required,
       answer_text: answer.answerText,
       likert_value: answer.likertValue,
       yes_no_value: answer.yesNoValue,
@@ -193,10 +197,32 @@ export const submitResponse = async (
     }
   }
 
+  // ── Upsert participant from respondent email ───────────
+  let participantId: string | null = null;
+  if (input.respondent_email) {
+    const participant = await prisma.participant.upsert({
+      where: {
+        surveyId_email: {
+          surveyId,
+          email: input.respondent_email,
+        },
+      },
+      update: {}, // no-op — participant already exists
+      create: {
+        surveyId,
+        email: input.respondent_email,
+        userId: survey.creatorId,
+        status: "active",
+      },
+    });
+    participantId = participant.id;
+  }
+
   const now = new Date();
   const response = await prisma.surveyResponse.create({
     data: {
       surveyId,
+      participantId,
       respondentEmail: input.respondent_email ?? null,
       startedAt: now,
       completedAt: now,

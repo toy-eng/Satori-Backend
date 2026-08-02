@@ -85,6 +85,22 @@ export const swaggerSpec = {
           },
         },
       },
+      UserProfileResponse: {
+        type: "object",
+        properties: {
+          success: { type: "boolean", example: true },
+          message: { type: "string", example: "User fetched successfully" },
+          data: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440000" },
+              email: { type: "string", format: "email", example: "user@example.com" },
+              userName: { type: "string", example: "johndoe" },
+              createdAt: { type: "string", format: "date-time", example: "2026-07-29T12:00:00.000Z" },
+            },
+          },
+        },
+      },
       UpdatePasswordInput: {
         type: "object",
         required: ["currentPassword", "newPassword"],
@@ -208,19 +224,13 @@ export const swaggerSpec = {
         type: "object",
         properties: {
           id: { type: "string", format: "uuid" },
-          creatorId: { type: "string", format: "uuid" },
           title: { type: "string" },
           description: { type: "string", nullable: true },
           category: { type: "string", nullable: true },
-          targetAudience: { type: "string", nullable: true },
-          goal: { type: "string", nullable: true },
-          usage: { type: "string", nullable: true },
-          status: { type: "string" },
+          status: { type: "string", enum: ["draft", "active", "inactive", "closed"] },
           responseLimit: { type: "integer", nullable: true },
           startDate: { type: "string", format: "date", nullable: true },
           endDate: { type: "string", format: "date", nullable: true },
-          createdAt: { type: "string", format: "date-time" },
-          updatedAt: { type: "string", format: "date-time" },
           sections: {
             type: "array",
             items: { $ref: "#/components/schemas/SectionDetail" },
@@ -239,10 +249,8 @@ export const swaggerSpec = {
         type: "object",
         properties: {
           id: { type: "string", format: "uuid" },
-          surveyId: { type: "string", format: "uuid" },
           title: { type: "string" },
           sortOrder: { type: "integer" },
-          createdAt: { type: "string", format: "date-time" },
           questions: {
             type: "array",
             items: { $ref: "#/components/schemas/QuestionDetail" },
@@ -283,7 +291,6 @@ export const swaggerSpec = {
         type: "object",
         properties: {
           id: { type: "string", format: "uuid" },
-          sectionId: { type: "string", format: "uuid" },
           text: { type: "string" },
           type: { type: "string", enum: ["text", "multiple_choice", "single_choice", "likert_scale", "yes_no"] },
           required: { type: "boolean" },
@@ -467,6 +474,8 @@ export const swaggerSpec = {
         properties: {
           question_id: { type: "string", format: "uuid" },
           question_text: { type: "string" },
+          question_type: { type: "string", enum: ["text", "multiple_choice", "single_choice", "likert_scale", "yes_no"] },
+          question_required: { type: "boolean", description: "Whether this question was marked as required" },
           answer_text: { type: "string", nullable: true },
           likert_value: { type: "integer", nullable: true },
           yes_no_value: { type: "boolean", nullable: true },
@@ -479,7 +488,12 @@ export const swaggerSpec = {
       SubmitResponseInput: {
         type: "object",
         properties: {
-          respondent_email: { type: "string", format: "email", example: "user@example.com" },
+          respondent_email: {
+            type: "string",
+            format: "email",
+            example: "user@example.com",
+            description: "Email of the respondent. Providing this auto-creates or links a Participant record for this survey.",
+          },
           answers: {
             type: "array",
             items: {
@@ -519,6 +533,8 @@ export const swaggerSpec = {
           name: { type: "string", nullable: true },
           email: { type: "string", nullable: true },
           status: { type: "string" },
+          survey_id: { type: "string", format: "uuid", description: "Survey this participant belongs to" },
+          survey_title: { type: "string", description: "Title of the survey" },
           response_count: { type: "integer" },
           created_at: { type: "string", format: "date-time" },
         },
@@ -587,6 +603,32 @@ export const swaggerSpec = {
               total_responses: { type: "integer", example: 12 },
               questions_responded: { type: "integer", example: 3 },
               new_questions: { type: "integer", example: 80 },
+            },
+          },
+          weekly_trend: {
+            type: "object",
+            description: "Daily counts for the last 7 days (oldest first, today last)",
+            properties: {
+              survey_quantity: {
+                type: "array",
+                items: { type: "integer" },
+                example: [2, 3, 5, 4, 4, 3, 3],
+              },
+              total_responses: {
+                type: "array",
+                items: { type: "integer" },
+                example: [65, 70, 72, 68, 75, 71, 68],
+              },
+              questions_responded: {
+                type: "array",
+                items: { type: "integer" },
+                example: [170, 180, 175, 190, 185, 175, 175],
+              },
+              new_questions: {
+                type: "array",
+                items: { type: "integer" },
+                example: [1, 0, 2, 1, 1, 2, 1],
+              },
             },
           },
         },
@@ -807,7 +849,14 @@ export const swaggerSpec = {
         summary: "Get current authenticated user",
         security: [{ bearerAuth: [] }],
         responses: {
-          "200": { description: "Current user data" },
+          "200": {
+            description: "Current user data",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UserProfileResponse" },
+              },
+            },
+          },
           "401": { description: "Unauthorized" },
         },
       },
@@ -1018,15 +1067,14 @@ export const swaggerSpec = {
     "/surveys/{id}": {
       get: {
         tags: ["Surveys"],
-        summary: "Get survey detail (full structure with sections)",
-        security: [{ bearerAuth: [] }],
+        summary: "Get survey detail (public — returns only active surveys)",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
         responses: {
           "200": {
             description: "Survey detail with sections and questions",
             content: { "application/json": { schema: { $ref: "#/components/schemas/SurveyDetail" } } },
           },
-          "404": { description: "Survey not found" },
+          "404": { description: "Survey not found or not active" },
         },
       },
       put: {
@@ -1260,6 +1308,8 @@ export const swaggerSpec = {
       post: {
         tags: ["Responses"],
         summary: "Submit a survey response (public, no auth required)",
+        description:
+          "Submits answers for a survey. If `respondent_email` is provided, a Participant record is automatically created (or reused) for that email + survey combination, and the response is linked to it. The participant will then appear in the global participant list for the survey owner.",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
         requestBody: {
           required: true,
@@ -1331,7 +1381,32 @@ export const swaggerSpec = {
         summary: "Get a single response with answers",
         security: [{ bearerAuth: [] }],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
-        responses: { "200": { description: "Response detail" } },
+        responses: {
+          "200": {
+            description: "Response detail with answers (includes question_type and question_required per answer)",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string", format: "uuid" },
+                    survey_id: { type: "string", format: "uuid" },
+                    survey_title: { type: "string" },
+                    respondent_email: { type: "string", nullable: true },
+                    started_at: { type: "string", format: "date-time" },
+                    completed_at: { type: "string", format: "date-time", nullable: true },
+                    time_taken_sec: { type: "integer", nullable: true },
+                    completion_rate: { type: "number", nullable: true },
+                    answers: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/ResponseAnswer" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       delete: {
         tags: ["Responses"],

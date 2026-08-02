@@ -150,10 +150,10 @@ export const createSurvey = async (userId: string, input: CreateSurveyInput) => 
   return survey;
 };
 
-// ─── Get Survey Detail ───────────────────────────────────
-export const getSurveyDetail = async (surveyId: string, userId: string) => {
-  const survey = await prisma.survey.findFirst({
-    where: { id: surveyId, creatorId: userId },
+// ─── Get Survey Detail (Public) ──────────────────────────
+export const getSurveyDetail = async (surveyId: string) => {
+  const survey = await prisma.survey.findUnique({
+    where: { id: surveyId },
     include: {
       sections: {
         include: {
@@ -170,8 +170,35 @@ export const getSurveyDetail = async (surveyId: string, userId: string) => {
   });
 
   if (!survey) throw new AppError("Survey not found", 404);
+  if (survey.status !== "active") throw new AppError("Survey not found", 404);
 
-  return survey;
+  return {
+    id: survey.id,
+    title: survey.title,
+    description: survey.description,
+    category: survey.category,
+    status: survey.status,
+    responseLimit: survey.responseLimit,
+    startDate: survey.startDate,
+    endDate: survey.endDate,
+    sections: survey.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      sortOrder: section.sortOrder,
+      questions: section.questions.map((question) => ({
+        id: question.id,
+        text: question.text,
+        type: question.type,
+        required: question.required,
+        sortOrder: question.sortOrder,
+        options: question.options.map((option) => ({
+          id: option.id,
+          value: option.value,
+          sortOrder: option.sortOrder,
+        })),
+      })),
+    })),
+  };
 };
 
 // ─── Update Survey ───────────────────────────────────────

@@ -1,5 +1,39 @@
 import { prisma } from "../config/prisma.js";
 
+// ─── Helpers ────────────────────────────────────────────
+
+/** Generate the last 7 days (today included) as YYYY-MM-DD strings, oldest first. */
+function getLast7Days(): { start: Date; end: Date; dates: string[] } {
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(now);
+  start.setDate(start.getDate() - 6);
+  start.setHours(0, 0, 0, 0);
+
+  const dates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    dates.push(d.toISOString().split("T")[0]!);
+  }
+
+  return { start, end, dates };
+}
+
+/** Bucket records by their date field and fill missing days with 0. */
+function bucketByDay(dates: string[], records: { date: Date }[]): number[] {
+  const map = new Map<string, number>();
+  for (const r of records) {
+    const day = r.date.toISOString().split("T")[0]!;
+    map.set(day, (map.get(day) ?? 0) + 1);
+  }
+  return dates.map((d) => map.get(d) ?? 0);
+}
+
+// ─── Service ────────────────────────────────────────────
+
 export const getStats = async (userId: string) => {
   const surveyQuantity = await prisma.survey.count({
     where: { creatorId: userId },
@@ -17,6 +51,35 @@ export const getStats = async (userId: string) => {
     where: { section: { survey: { creatorId: userId } } },
   });
 
+  // ── Weekly trends (last 7 days, oldest → today) ──────
+  const { start, end, dates } = getLast7Days();
+
+  const [recentSurveys, recentResponses, recentAnswers, recentQuestions] = await Promise.all([
+    prisma.survey.findMany({
+      where: { creatorId: userId, createdAt: { gte: start, lte: end } },
+      select: { createdAt: true },
+    }),
+    prisma.surveyResponse.findMany({
+      where: { survey: { creatorId: userId }, startedAt: { gte: start, lte: end } },
+      select: { startedAt: true },
+    }),
+    prisma.responseAnswer.findMany({
+      where: { response: { survey: { creatorId: userId } }, createdAt: { gte: start, lte: end } },
+      select: { createdAt: true },
+    }),
+    prisma.surveyQuestion.findMany({
+      where: { section: { survey: { creatorId: userId } }, createdAt: { gte: start, lte: end } },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  const weekly_trend = {
+    survey_quantity: bucketByDay(dates, recentSurveys.map((s) => ({ date: s.createdAt }))),
+    total_responses: bucketByDay(dates, recentResponses.map((r) => ({ date: r.startedAt }))),
+    questions_responded: bucketByDay(dates, recentAnswers.map((a) => ({ date: a.createdAt }))),
+    new_questions: bucketByDay(dates, recentQuestions.map((q) => ({ date: q.createdAt }))),
+  };
+
   return {
     survey_quantity: surveyQuantity,
     total_responses: totalResponses,
@@ -28,6 +91,7 @@ export const getStats = async (userId: string) => {
       questions_responded: 0,
       new_questions: 0,
     },
+    weekly_trend,
   };
 };
 

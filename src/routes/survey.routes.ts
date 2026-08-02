@@ -22,7 +22,7 @@ router.post("/draft", authenticate, validate(draftSurveySchema), surveyControlle
 // ─── Survey CRUD ─────────────────────────────────────────
 router.get("/", authenticate, surveyController.listSurveys);
 router.post("/", authenticate, validate(createSurveySchema), surveyController.createSurvey);
-router.get("/:id", authenticate, surveyController.getSurveyDetail);
+router.get("/:id", surveyController.getSurveyDetail);
 router.put("/:id", authenticate, validate(draftSurveySchema), surveyController.updateDraft);
 router.delete("/:id", authenticate, surveyController.deleteSurvey);
 router.patch("/:id/status", authenticate, validate(updateStatusSchema), surveyController.updateStatus);
