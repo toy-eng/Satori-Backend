@@ -6,6 +6,10 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
 
-const adapter = new PrismaPg({ connectionString });
+// Heroku Postgres requires SSL with a self-signed certificate.
+const adapter = new PrismaPg({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+});
 
 export const prisma = new PrismaClient({ adapter });
