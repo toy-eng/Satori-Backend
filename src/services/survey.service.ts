@@ -350,7 +350,7 @@ export const publishSurvey = async (
       targetAudience: surveyData.audience ?? null,
       goal: surveyData.goal ?? null,
       usage: surveyData.usage ?? null,
-      status: surveyData.status ?? "draft",
+      status: "active",
       responseLimit: surveyData.responseLimit ?? null,
       startDate: surveyData.startDate ? new Date(surveyData.startDate) : null,
       endDate: surveyData.endDate ? new Date(surveyData.endDate) : null,
