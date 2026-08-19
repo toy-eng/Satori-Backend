@@ -220,7 +220,7 @@ export const getSurveyAnalytics = async (surveyId: string, userId: string) => {
         };
       }
 
-      if (question.type === "yes_no") {
+      if (question.type === "yes_no" || question.type === "true_false") {
         const yesCount = answers.filter((a) => a.yesNoValue === true).length;
         const noCount = answers.filter((a) => a.yesNoValue === false).length;
         return {
@@ -233,6 +233,11 @@ export const getSurveyAnalytics = async (surveyId: string, userId: string) => {
       }
 
       if (question.type === "multiple_choice" || question.type === "single_choice") {
+        // answerOptions stores option *IDs*; resolve them back to option values
+        // so the breakdown keys line up with what the frontend displays.
+        const optionValueById = new Map(
+          question.options.map((option) => [option.id, option.value])
+        );
         for (const option of question.options) {
           responses[option.value] = 0;
         }
@@ -240,8 +245,9 @@ export const getSurveyAnalytics = async (surveyId: string, userId: string) => {
           if (answer.answerOptions) {
             try {
               const selected = JSON.parse(answer.answerOptions) as string[];
-              for (const optValue of selected) {
-                responses[optValue] = (responses[optValue] ?? 0) + 1;
+              for (const optionId of selected) {
+                const value = optionValueById.get(optionId) ?? optionId;
+                responses[value] = (responses[value] ?? 0) + 1;
               }
             } catch {
               // skip invalid JSON

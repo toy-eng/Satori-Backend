@@ -24,7 +24,7 @@ export const createSurvey = asyncHandler(async (req: Request, res: Response) => 
 
 export const getSurveyDetail = asyncHandler(async (req: Request, res: Response) => {
   const id = req.params["id"] as string;
-  const survey = await surveyService.getSurveyDetail(id);
+  const survey = await surveyService.getSurveyDetail(id, req.userId);
   res.status(200).json({ success: true, data: survey });
 });
 

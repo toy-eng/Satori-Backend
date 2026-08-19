@@ -15,9 +15,10 @@ import * as sectionController from "../controllers/section.controller.js";
 const router = Router();
 
 // ─── Sections ───────────────────────────────────────────
+// NB: "/reorder" must be registered before "/:id" so it isn't matched as an id.
+router.put("/reorder", authenticate, validate(reorderSectionsSchema), sectionController.reorderSections);
 router.put("/:id", authenticate, validate(updateSectionSchema), sectionController.updateSection);
 router.delete("/:id", authenticate, sectionController.deleteSection);
-router.put("/reorder", authenticate, validate(reorderSectionsSchema), sectionController.reorderSections);
 
 // ─── Questions ──────────────────────────────────────────
 router.post("/:id/questions", authenticate, validate(createQuestionSchema), sectionController.createQuestion);

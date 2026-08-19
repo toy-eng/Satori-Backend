@@ -28,3 +28,24 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction): 
     throw new AppError("Invalid or expired token.", 401);
   }
 };
+
+// Attaches req.userId when a valid token is present, but never rejects the
+// request. Used for endpoints that serve both public (survey takers) and
+// authenticated (survey owners) callers.
+export const optionalAuthenticate = (req: Request, _res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as unknown as JwtPayload;
+        req.userId = decoded.userId;
+      } catch {
+        // Invalid/expired token — treat as an unauthenticated (public) request.
+      }
+    }
+  }
+
+  next();
+};

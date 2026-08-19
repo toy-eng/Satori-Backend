@@ -7,6 +7,7 @@ const questionTypeEnum = z.enum([
   "single_choice",
   "likert_scale",
   "yes_no",
+  "true_false",
 ]);
 
 // ─── List Surveys Query ──────────────────────────────────

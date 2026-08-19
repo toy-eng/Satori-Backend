@@ -27,7 +27,17 @@ export const listSurveyResponses = async (
       include: {
         answers: {
           include: {
-            question: { select: { text: true, type: true, required: true } },
+            question: {
+              select: {
+                text: true,
+                type: true,
+                required: true,
+                options: {
+                  select: { id: true, value: true },
+                  orderBy: { sortOrder: "asc" },
+                },
+              },
+            },
           },
         },
       },
@@ -49,8 +59,13 @@ export const listSurveyResponses = async (
         answer_text: answer.answerText,
         likert_value: answer.likertValue,
         yes_no_value: answer.yesNoValue,
+        options: answer.question.options.map((option) => option.value),
         selected_options: answer.answerOptions
-          ? (JSON.parse(answer.answerOptions) as string[])
+          ? (JSON.parse(answer.answerOptions) as string[]).map(
+              (optionId) =>
+                answer.question.options.find((option) => option.id === optionId)?.value ??
+                optionId
+            )
           : [],
       })),
     })),
@@ -101,7 +116,17 @@ export const getResponseDetail = async (responseId: string, userId: string) => {
       survey: { select: { id: true, title: true } },
       answers: {
         include: {
-          question: { select: { text: true, type: true, required: true } },
+          question: {
+            select: {
+              text: true,
+              type: true,
+              required: true,
+              options: {
+                select: { id: true, value: true },
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
         },
       },
     },
@@ -126,8 +151,13 @@ export const getResponseDetail = async (responseId: string, userId: string) => {
       answer_text: answer.answerText,
       likert_value: answer.likertValue,
       yes_no_value: answer.yesNoValue,
+      options: answer.question.options.map((option) => option.value),
       selected_options: answer.answerOptions
-        ? (JSON.parse(answer.answerOptions) as string[])
+        ? (JSON.parse(answer.answerOptions) as string[]).map(
+            (optionId) =>
+              answer.question.options.find((option) => option.id === optionId)?.value ??
+              optionId
+          )
         : [],
     })),
   };

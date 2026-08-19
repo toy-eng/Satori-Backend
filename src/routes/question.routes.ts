@@ -11,9 +11,10 @@ import * as sectionController from "../controllers/section.controller.js";
 
 const router = Router();
 
+// NB: "/reorder" must be registered before "/:id" so it isn't matched as an id.
+router.put("/reorder", authenticate, validate(reorderQuestionsSchema), sectionController.reorderQuestions);
 router.put("/:id", authenticate, validate(updateQuestionSchema), sectionController.updateQuestion);
 router.delete("/:id", authenticate, sectionController.deleteQuestion);
-router.put("/reorder", authenticate, validate(reorderQuestionsSchema), sectionController.reorderQuestions);
 
 // ─── Options ────────────────────────────────────────────
 router.post("/:id/options", authenticate, validate(createOptionSchema), sectionController.createOption);

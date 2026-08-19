@@ -150,8 +150,8 @@ export const createSurvey = async (userId: string, input: CreateSurveyInput) => 
   return survey;
 };
 
-// ─── Get Survey Detail (Public) ──────────────────────────
-export const getSurveyDetail = async (surveyId: string) => {
+// ─── Get Survey Detail (Public, or owner-only for non-active) ──
+export const getSurveyDetail = async (surveyId: string, requesterId?: string) => {
   const survey = await prisma.survey.findUnique({
     where: { id: surveyId },
     include: {
@@ -170,17 +170,27 @@ export const getSurveyDetail = async (surveyId: string) => {
   });
 
   if (!survey) throw new AppError("Survey not found", 404);
-  if (survey.status !== "active") throw new AppError("Survey not found", 404);
+
+  // Non-active surveys are only visible to their owner. Public survey takers
+  // (no/invalid token) can only access active surveys.
+  const isOwner = requesterId !== undefined && requesterId === survey.creatorId;
+  if (survey.status !== "active" && !isOwner) {
+    throw new AppError("Survey not found", 404);
+  }
 
   return {
     id: survey.id,
     title: survey.title,
     description: survey.description,
     category: survey.category,
+    targetAudience: survey.targetAudience,
+    goal: survey.goal,
+    usage: survey.usage,
     status: survey.status,
     responseLimit: survey.responseLimit,
     startDate: survey.startDate,
     endDate: survey.endDate,
+    createdAt: survey.createdAt,
     sections: survey.sections.map((section) => ({
       id: section.id,
       title: section.title,
