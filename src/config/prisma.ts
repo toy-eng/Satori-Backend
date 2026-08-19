@@ -7,9 +7,13 @@ if (!connectionString) {
 }
 
 // Heroku Postgres requires SSL with a self-signed certificate.
+// Local development Postgres typically does NOT support SSL, so SSL is only
+// enabled when explicitly requested via DATABASE_SSL=true (e.g. in production).
+const sslEnabled = process.env["DATABASE_SSL"] === "true";
+
 const adapter = new PrismaPg({
   connectionString,
-  ssl: { rejectUnauthorized: false },
+  ...(sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 
 export const prisma = new PrismaClient({ adapter });
