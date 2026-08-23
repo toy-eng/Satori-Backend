@@ -10,7 +10,21 @@ const app = express();
 
 // ─── Middleware ───────────────────────────────────────────
 app.use(helmet());
-app.use(cors());
+
+const allowedOrigins = [
+  "https://satori-inky.vercel.app", // production
+  "http://localhost:5173", // local dev (Vite)
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
