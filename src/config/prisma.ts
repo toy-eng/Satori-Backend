@@ -6,10 +6,15 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
 
-// Heroku Postgres requires SSL with a self-signed certificate.
-// Local development Postgres typically does NOT support SSL, so SSL is only
-// enabled when explicitly requested via DATABASE_SSL=true (e.g. in production).
-const sslEnabled = process.env["DATABASE_SSL"] === "true";
+// Managed Postgres providers (e.g. Render external URLs) require SSL with a
+// provider-issued certificate, while local Postgres and Render internal
+// connections do not. SSL is auto-enabled when the connection string asks for
+// it, and can be forced either way with DATABASE_SSL=true|false.
+const sslOverride = process.env["DATABASE_SSL"];
+const sslEnabled =
+  sslOverride === "true" ||
+  (sslOverride !== "false" &&
+    /[?&]sslmode=(require|prefer|verify)/i.test(connectionString));
 
 const adapter = new PrismaPg({
   connectionString,

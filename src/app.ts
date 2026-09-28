@@ -11,10 +11,15 @@ const app = express();
 // ─── Middleware ───────────────────────────────────────────
 app.use(helmet());
 
-const allowedOrigins = [
-  "https://satori-inky.vercel.app", // production
-  "http://localhost:5173", // local dev (Vite)
-];
+// Comma-separated list of allowed browser origins, e.g.
+// CORS_ORIGINS="https://app.example.com,http://localhost:5173"
+const allowedOrigins = (
+  process.env["CORS_ORIGINS"] ??
+  "https://satori-inky.vercel.app,http://localhost:5173"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(
   cors({
