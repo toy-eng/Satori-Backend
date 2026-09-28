@@ -13,10 +13,11 @@ services:
     region: frankfurt
     branch: main
     healthCheckPath: /api/v1/health
-    # Building here also applies any pending Prisma migrations before the
-    # new version is released.
-    buildCommand: npm ci --include=dev && npm run build && npm run prisma:deploy
-    startCommand: npm start
+    # Compile TypeScript. dev deps are required because tsc lives there.
+    buildCommand: npm ci --include=dev && npm run build
+    # Migrations run at boot so they always execute where the database is
+    # reachable, instead of depending on build-time network access.
+    startCommand: npm run prisma:deploy && npm start
     autoDeployTrigger: commit
     envVars:
       - key: NODE_ENV
